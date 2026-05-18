@@ -249,11 +249,13 @@ async fn main() -> anyhow::Result<()> {
     let redirect_uri = std::env::var("RSPOTIFY_REDIRECT_URI")
         .expect("RSPOTIFY_REDIRECT_URI must be set in .env");
     let url = redirect_uri.parse::<url::Url>().expect("Invalid RSPOTIFY_REDIRECT_URI");
-    let host = url.host_str().unwrap_or("127.0.0.1");
+    // let host = url.host_str().unwrap_or("127.0.0.1");
     let port = url.port().unwrap_or(8888);
-    let addr = format!("{}:{}", host, port).parse::<SocketAddr>().expect("Invalid address");
+    let addr = SocketAddr::from(([0, 0, 0, 0], port));
+    // let addr = format!("{}:{}", host, port).parse::<SocketAddr>().expect("Invalid address");
 
-    println!("🚀 Server live at {url}");
+    println!("🚀 Server listening on all interfaces at port {port}");
+    println!("🔗 Spotify callback expects you at: {url}");
 
     let listener = tokio::net::TcpListener::bind(addr).await?;
     // just for local?
