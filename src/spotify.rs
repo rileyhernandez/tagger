@@ -41,10 +41,17 @@ pub async fn fetch_all_liked_tracks(
         match item {
             Ok(t) => {
                 let track = t.track;
-                let id = track.id.as_ref().map(|id| id.to_string()).unwrap_or_default();
+                let id = track
+                    .id
+                    .as_ref()
+                    .map(|id| id.to_string())
+                    .unwrap_or_default();
 
                 if !id.is_empty() && existing_ids.contains(&id) {
-                    println!("Found already synced track: {}. Stopping fetch.", track.name);
+                    println!(
+                        "Found already synced track: {}. Stopping fetch.",
+                        track.name
+                    );
                     break;
                 }
 

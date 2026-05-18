@@ -13,6 +13,7 @@ use axum::{
     routing::{delete, get, post},
     http::HeaderMap,
 };
+use axum_server::tls_rustls::RustlsConfig;
 use rspotify::model::{PlayableId, TrackId};
 use rspotify::prelude::OAuthClient;
 use tokio::sync::RwLock;
@@ -246,6 +247,11 @@ async fn main() -> anyhow::Result<()> {
         .route("/clear", post(clear_selected))
         .with_state(state);
 
+    let config = RustlsConfig::from_pem_file(
+        "./raspberrypi.tailf45114.ts.net.crt",
+        "./raspberrypi.tailf45114.ts.net.key",
+    ).await?;
+
     let redirect_uri = std::env::var("RSPOTIFY_REDIRECT_URI")
         .expect("RSPOTIFY_REDIRECT_URI must be set in .env");
     let url = redirect_uri.parse::<url::Url>().expect("Invalid RSPOTIFY_REDIRECT_URI");
@@ -257,11 +263,16 @@ async fn main() -> anyhow::Result<()> {
     println!("🚀 Server listening on all interfaces at port {port}");
     println!("🔗 Spotify callback expects you at: {url}");
 
-    let listener = tokio::net::TcpListener::bind(addr).await?;
-    // just for local?
-    // open::that(url.as_str()).ok();
+    // let listener = tokio::net::TcpListener::bind(addr).await?;
+    // // just for local?
+    // // open::that(url.as_str()).ok();
     
-    axum::serve(listener, app).await?;
+    // axum::serve(listener, app).await?;
+
+    
+    axum_server::bind_rustls(addr, config)
+        .serve(app.into_make_service())
+        .await?;
 
     Ok(())
 }

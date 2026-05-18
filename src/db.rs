@@ -74,10 +74,10 @@ pub async fn get_kv_store(pool: &SqlitePool, key: &str) -> Result<Option<String>
 // pub async fn set_kv_store(pool: &SqlitePool, key: &str, value: &str) -> Result<()> {
 //     sqlx::query(
 //         r#"
-//         INSERT INTO kv_store (key, value) 
+//         INSERT INTO kv_store (key, value)
 //         VALUES (?, ?)
-//         ON CONFLICT(key) DO UPDATE SET 
-//             value = excluded.value, 
+//         ON CONFLICT(key) DO UPDATE SET
+//             value = excluded.value,
 //             updated_at = CURRENT_TIMESTAMP
 //         "#,
 //     )

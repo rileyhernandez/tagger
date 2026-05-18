@@ -1,8 +1,8 @@
 use askama::Template;
 use rspotify::{AuthCodeSpotify, model::CurrentPlaybackContext, model::PlayableItem};
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
 use std::collections::HashSet;
+use std::sync::Arc;
 use tokio::sync::RwLock;
 
 #[derive(Clone)]
