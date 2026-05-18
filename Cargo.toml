@@ -1,0 +1,19 @@
+[package]
+name = "tagger"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0.102"
+dotenvy = "0.15.7"
+rspotify = { version = "0.16.1", features = ["cli"] }
+tokio = { version = "1.52.1", features = ["full"] }
+futures = "0.3"
+futures-util = "0.3.32"
+sqlx = { version = "0.7", features = ["runtime-tokio", "sqlite", "macros"] }
+axum = "0.7"
+serde = { version = "1.0", features = ["derive"] }
+askama = { version = "0.12", features = ["with-axum"] }
+askama_axum = "0.4"
+open = "5.3.5"
+url = "2.5.8"

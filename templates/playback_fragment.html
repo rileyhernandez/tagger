@@ -1,0 +1,207 @@
+<style>
+    .pb-wrap {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        flex-wrap: nowrap;
+    }
+    .pb-art {
+        width: 42px;
+        height: 42px;
+        border-radius: 10px;
+        overflow: hidden;
+        border: 1px solid rgba(255,255,255,0.08);
+        flex-shrink: 0;
+        background: #18181f;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .pb-art img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+    }
+    .pb-art-placeholder {
+        font-size: 1rem;
+        color: #45435a;
+    }
+    .pb-info {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        gap: 3px;
+        flex: 1;
+    }
+    .pb-title-row {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        min-width: 0;
+    }
+    .pb-name {
+        font-family: 'DM Sans', sans-serif;
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: #f0eeff;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        letter-spacing: -0.01em;
+    }
+    .pb-playing-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #3dba7e;
+        flex-shrink: 0;
+        animation: pulse-dot 1.8s ease-in-out infinite;
+    }
+    @keyframes pulse-dot {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.5; transform: scale(0.75); }
+    }
+    .pb-meta {
+        font-family: 'DM Mono', monospace;
+        font-size: 0.62rem;
+        color: #45435a;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .pb-meta .sep { margin: 0 0.3rem; opacity: 0.5; }
+    .pb-idle {
+        font-family: 'DM Mono', monospace;
+        font-size: 0.65rem;
+        color: #45435a;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+    }
+
+    /* Transport controls */
+    .pb-controls {
+        display: flex;
+        align-items: center;
+        gap: 0.2rem;
+        flex-shrink: 0;
+    }
+    .pb-btn {
+        width: 30px;
+        height: 30px;
+        border-radius: 8px;
+        border: 1px solid rgba(255,255,255,0.07);
+        background: #18181f;
+        color: #8880aa;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.15s ease;
+        padding: 0;
+        -webkit-tap-highlight-color: transparent;
+    }
+    .pb-btn:hover {
+        background: rgba(124,106,247,0.12);
+        border-color: rgba(124,106,247,0.3);
+        color: #f0eeff;
+    }
+    .pb-btn:active { transform: scale(0.9); }
+    .pb-btn svg { width: 13px; height: 13px; }
+
+    .pb-btn-play {
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        background: #7c6af7;
+        border-color: transparent;
+        color: #fff;
+    }
+    .pb-btn-play:hover { background: #9488f8; border-color: transparent; color: #fff; }
+    .pb-btn-play svg { width: 13px; height: 13px; }
+
+    .pb-btn.htmx-request svg { opacity: 0.3; animation: spin 0.7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* On very narrow screens, hide the device name to save space */
+    @media (max-width: 380px) {
+        .pb-device { display: none; }
+        .pb-sep { display: none; }
+        .pb-art { width: 36px; height: 36px; }
+        .pb-btn { width: 28px; height: 28px; }
+        .pb-btn-play { width: 32px; height: 32px; }
+    }
+</style>
+
+<div class="pb-wrap">
+    {% if let Some(p) = playback %}
+        <div class="pb-art">
+            {% if !p.image_url.is_empty() %}
+                <img src="{{ p.image_url }}" alt="Album art">
+            {% else %}
+                <span class="pb-art-placeholder">♫</span>
+            {% endif %}
+        </div>
+
+        <div class="pb-info">
+            <div class="pb-title-row">
+                <span class="pb-name">{{ p.name }}</span>
+                {% if p.is_playing %}
+                    <span class="pb-playing-dot"></span>
+                {% endif %}
+            </div>
+            <div class="pb-meta">
+                {{ p.artist }}<span class="sep pb-sep">·</span><span class="pb-device">{{ p.device_name }}</span>
+            </div>
+        </div>
+
+        <div class="pb-controls">
+            <button class="pb-btn"
+                    hx-post="/playback/prev"
+                    hx-target="#playback-container"
+                    hx-swap="innerHTML"
+                    title="Previous">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/>
+                </svg>
+            </button>
+
+            {% if p.is_playing %}
+            <button class="pb-btn pb-btn-play"
+                    hx-post="/playback/pause"
+                    hx-target="#playback-container"
+                    hx-swap="innerHTML"
+                    title="Pause">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M6 19h4V5H6zm8-14v14h4V5z"/>
+                </svg>
+            </button>
+            {% else %}
+            <button class="pb-btn pb-btn-play"
+                    hx-post="/playback/play"
+                    hx-target="#playback-container"
+                    hx-swap="innerHTML"
+                    title="Play">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M8 5v14l11-7z"/>
+                </svg>
+            </button>
+            {% endif %}
+
+            <button class="pb-btn"
+                    hx-post="/playback/next"
+                    hx-target="#playback-container"
+                    hx-swap="innerHTML"
+                    title="Next">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="m6 18 8.5-6L6 6zm2.5-6L15 6v12z M16 6h2v12h-2z"/>
+                </svg>
+            </button>
+        </div>
+
+    {% else %}
+        <span class="pb-idle">Playback idle</span>
+    {% endif %}
+</div>
