@@ -30,15 +30,42 @@ async fn auth_handler(State(state): State<AppState>) -> impl IntoResponse {
     Redirect::to(&url)
 }
 
+// async fn callback_handler(
+//     State(state): State<AppState>,
+//     Query(query): Query<CallbackQuery>,
+// ) -> impl IntoResponse {
+//     if let Err(e) = spotify::authenticate(&state.spotify, &query.code).await {
+//         eprintln!("Auth error: {:?}", e);
+//     }
+//     *state.authed.write().await = true;
+//     Redirect::to("/")
+// }
+
+// TODO: for debugging
 async fn callback_handler(
     State(state): State<AppState>,
-    Query(query): Query<CallbackQuery>,
+    req: axum::http::Request<axum::body::Body>, // Captures the full raw request
 ) -> impl IntoResponse {
-    if let Err(e) = spotify::authenticate(&state.spotify, &query.code).await {
-        eprintln!("Auth error: {:?}", e);
+    println!("--- Raw Incoming URI: {:?}", req.uri());
+    println!("--- Raw Incoming Headers: {:?}", req.headers());
+    let query_str = req.uri().query().unwrap_or("");
+    let parsed: Result<CallbackQuery, _> = serde_urlencoded::from_str(query_str);
+    match parsed {
+        Ok(query) => {
+            if let Err(e) = spotify::authenticate(&state.spotify, &query.code).await {
+                eprintln!("Auth error: {:?}", e);
+            }
+            *state.authed.write().await = true;
+            Redirect::to("/").into_response()
+        }
+        Err(e) => {
+            eprintln!("--- Serde failed to parse query parameters: {:?}", e);
+            format!(
+                "Error: Query string did not contain a readable 'code' field.\nRaw query seen by server: '{}'", 
+                query_str
+            ).into_response()
+        }
     }
-    *state.authed.write().await = true;
-    Redirect::to("/")
 }
 
 async fn require_auth(state: &AppState) -> Option<Redirect> {
@@ -249,7 +276,7 @@ async fn main() -> anyhow::Result<()> {
 
     // let redirect_uri = std::env::var("RSPOTIFY_REDIRECT_URI")
     //     .expect("RSPOTIFY_REDIRECT_URI must be set in .env");
-    let addr = SocketAddr::from(([127, 0, 0, 1], 8888));
+    let addr = SocketAddr::from(([0, 0, 0, 0], 8888));
     println!("🚀 Server listening locally on http://{}", addr);
     let listener = tokio::net::TcpListener::bind(addr).await?;
     axum::serve(listener, app).await?;

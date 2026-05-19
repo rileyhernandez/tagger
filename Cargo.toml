@@ -15,3 +15,4 @@ axum = "0.7"
 serde = { version = "1.0", features = ["derive"] }
 askama = { version = "0.12", features = ["with-axum"] }
 askama_axum = "0.4"
+serde_urlencoded = "0.7.1"

@@ -2217,6 +2217,7 @@ dependencies = [
  "futures-util",
  "rspotify",
  "serde",
+ "serde_urlencoded",
  "sqlx",
  "tokio",
 ]
