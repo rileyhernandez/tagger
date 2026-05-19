@@ -27,6 +27,8 @@ pub struct CallbackQuery {
 
 async fn auth_handler(State(state): State<AppState>) -> impl IntoResponse {
     let url = spotify::get_auth_url(&state.spotify);
+    // TODO: debug line
+    println!("--- Generated Spotify Auth Link: {}", url);
     Redirect::to(&url)
 }
 
