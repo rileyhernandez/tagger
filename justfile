@@ -1,9 +1,9 @@
 set shell := ["bash", "-c"]
 
-# Run a command inside the 'lab' container
+# Run a command inside the 'lab' container via an internal shell session
 [private]
 run-in-lab command:
-    distrobox-enter -n lab -- {{command}}
+    distrobox-enter -n lab -- bash -c "{{command}}"
 
 # Build the project
 build:
@@ -13,9 +13,9 @@ build:
 clean:
     @just run-in-lab "cargo clean"
 
-# Run the project
+# Run the project with logging
 run:
-    @just run-in-lab "cargo run"
+    @just run-in-lab "RUST_LOG=info cargo run"
 
 # Run tests
 test:

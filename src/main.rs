@@ -5,6 +5,7 @@ mod spotify;
 use crate::models::{
     AppState, FilterQuery, IndexTemplate, NewTagRequest, PlaybackTemplate, PlaybackView,
 };
+use anyhow::anyhow;
 use axum::extract::Query;
 use axum::{
     Router,
@@ -13,6 +14,7 @@ use axum::{
     routing::{delete, get, post},
     http::HeaderMap,
 };
+use log::{info, error};
 use rspotify::model::{PlayableId, TrackId};
 use rspotify::prelude::OAuthClient;
 use tokio::sync::RwLock;
@@ -27,8 +29,7 @@ pub struct CallbackQuery {
 
 async fn auth_handler(State(state): State<AppState>) -> impl IntoResponse {
     let url = spotify::get_auth_url(&state.spotify);
-    // TODO: debug line
-    println!("--- Generated Spotify Auth Link: {}", url);
+    info!("Generated Spotify Auth Link: {}", url);
     Redirect::to(&url)
 }
 
@@ -46,22 +47,22 @@ async fn auth_handler(State(state): State<AppState>) -> impl IntoResponse {
 // TODO: for debugging
 async fn callback_handler(
     State(state): State<AppState>,
-    req: axum::http::Request<axum::body::Body>, // Captures the full raw request
+    req: axum::http::Request<axum::body::Body>,
 ) -> impl IntoResponse {
-    println!("--- Raw Incoming URI: {:?}", req.uri());
-    println!("--- Raw Incoming Headers: {:?}", req.headers());
+    info!("Raw Incoming URI: {:?}", req.uri());
+    info!("Raw Incoming Headers: {:?}", req.headers());
     let query_str = req.uri().query().unwrap_or("");
     let parsed: Result<CallbackQuery, _> = serde_urlencoded::from_str(query_str);
     match parsed {
         Ok(query) => {
             if let Err(e) = spotify::authenticate(&state.spotify, &query.code).await {
-                eprintln!("Auth error: {:?}", e);
+                error!("Auth error: {:?}", e);
             }
             *state.authed.write().await = true;
             Redirect::to("/").into_response()
         }
         Err(e) => {
-            eprintln!("--- Serde failed to parse query parameters: {:?}", e);
+            error!("Serde failed to parse query parameters: {:?}", e);
             format!(
                 "Error: Query string did not contain a readable 'code' field.\nRaw query seen by server: '{}'", 
                 query_str
@@ -245,11 +246,37 @@ async fn previous_track_playback(State(state): State<AppState>) -> impl IntoResp
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    env_logger::init();
     dotenvy::dotenv().ok();
+
+    let redirect_uri_str = dotenvy::var("RSPOTIFY_REDIRECT_URI")
+        .map_err(|_| anyhow!("RSPOTIFY_REDIRECT_URI must be configured in your env environment"))?;
+    
+    let parsed_url = url::Url::parse(&redirect_uri_str)
+        .map_err(|e| anyhow!("Failed to parse RSPOTIFY_REDIRECT_URI: {}", e))?;
+
+    let port = parsed_url.port().unwrap_or(if parsed_url.scheme() == "https" { 443 } else { 80 });
+
+    let host_str = parsed_url.host_str().unwrap_or("localhost");
+    let (ip_binding, is_proxy) = match host_str {
+        "localhost" | "127.0.0.1" => {
+            info!("Local development environment detected via URI.");
+            ([127, 0, 0, 1], false)
+        }
+        _ => {
+            info!("Production server environment detected via URI.");
+            ([127, 0, 0, 1], true) 
+        }
+    };
+
+    info!("Initializing database...");
     let pool = db::setup_db().await?;
+    info!("Database initialized!");
 
+    info!("Creating Spotify client...");
     let spotify = spotify::create_client_unauthenticated().await?;
-
+    info!("Spotify client created!");
+    
     let state = AppState {
         pool,
         spotify: Arc::new(spotify),
@@ -275,11 +302,14 @@ async fn main() -> anyhow::Result<()> {
         .route("/clear", post(clear_selected))
         .with_state(state);
 
+    let addr = SocketAddr::from((ip_binding, port));
 
-    // let redirect_uri = std::env::var("RSPOTIFY_REDIRECT_URI")
-    //     .expect("RSPOTIFY_REDIRECT_URI must be set in .env");
-    let addr = SocketAddr::from(([0, 0, 0, 0], 8888));
-    println!("🚀 Server listening locally on http://{}", addr);
+    if is_proxy {
+        info!("Server listening internally at http://{} (Proxied securely via Caddy)", addr);
+    } else {
+        info!("Server listening locally at http://{}", addr);
+    }
+
     let listener = tokio::net::TcpListener::bind(addr).await?;
     axum::serve(listener, app).await?;
 

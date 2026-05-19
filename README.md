@@ -34,32 +34,32 @@ The system uses a relational schema to manage tracks and their associations:
 │   ├── models.rs       # Data structures and Askama templates
 │   └── spotify.rs      # Spotify API integration
 ├── templates/
-│   └── index.html      # Main UI template
+│   ├── index.html      # Main UI template
+│   └── playback_fragment.html # HTMX fragment for playback controls
 └── GEMINI.md           # Project-specific development instructions
 ```
 
 ## Features & Progress
 
-- [x] **Spotify Sync**: Fetch all liked tracks from Spotify and store them locally.
-- [x] **Track Listing**: Paged view of all tracks with their associated tags.
-- [x] **Custom Tagging**: Create global tags and link them to individual tracks.
-- [x] **Search & Filter**: Search tracks by title or filter by specific tags.
-- [ ] **HTMX Refinement**: Replace full-page redirects with partial DOM updates for better UX.
-- [ ] **Batch Actions**: Select multiple tracks to add to queue or create a new Spotify playlist.
+- [x] **Spotify Sync**: Incremental sync fetches only new liked tracks from Spotify.
+- [x] **Track Listing**: Paged view (50 tracks/page) of all tracks with their associated tags.
+- [x] **Custom Tagging**: Create global tags and link/unlink them to individual tracks.
+- [x] **Search & Filter**: Search tracks by title or filter by specific tags using efficient SQL queries.
+- [x] **Playback Controls**: Real-time "Now Playing" view with Play/Pause, Next, and Previous controls (HTMX powered).
+- [x] **Batch Actions**: Select multiple tracks to add them to the Spotify playback queue.
 - [ ] **Advanced Filtering**: Combine multiple tags and search queries.
 
 ## Development Insights & Future Improvements
 
 ### Technical Debt & Idiomaticity
-1. **HTMX Usage**: Currently, most handlers use `Redirect::to("/")`. To truly leverage HTMX, these should return partial HTML fragments (e.g., a single track row or an updated tag list) to avoid full page reloads.
-2. **SQL Efficiency**: Tag filtering currently uses `HAVING tag_list LIKE ?`. While functional, this is brittle and inefficient. Moving to a proper `JOIN` with a `WHERE` clause on `tag_id` is recommended.
-3. **Error Handling**: Several `.unwrap()` calls and ignored results (`let _ = ...`) exist in `main.rs` and `db.rs`. These should be replaced with proper error propagation and user-facing error messages.
-4. **Spotify Sync**: The current sync fetches the entire liked tracks list. Implementing incremental sync (fetching only tracks added since `last_sync`) would significantly improve performance for large libraries.
-5. **Data Modeling**: `TrackDisplay` stores tags as a comma-separated string. Converting this to a `Vec<String>` would allow for better manipulation and cleaner template logic.
+1. **HTMX Usage**: Playback and track selection now leverage HTMX for partial DOM updates. However, tag management still uses full-page redirects and could be further refined.
+2. **SQL Efficiency**: Tag filtering has been optimized using `WHERE EXISTS` instead of `LIKE` patterns.
+3. **Error Handling**: Logging has been improved, but several `.unwrap()` calls still exist in `main.rs` that should be replaced with proper error propagation.
+4. **Data Modeling**: `TrackDisplay` now uses `Vec<String>` for tags, improving template logic and data manipulation.
 
 ### Roadmap Insights
-- **Filtering**: The long-term goal of checkbox-based selection and batching will require a more robust state management on the frontend, likely using HTMX's `hx-vals` or a small amount of Alpine.js/Vanilla JS to track selections across pages.
-- **Playlist/Queue Integration**: Adding songs to a Spotify playlist or queue will require additional scopes (`playlist-modify-public`, `user-modify-playback-state`) and new endpoints in `spotify.rs`.
+- **Filtering**: The long-term goal of combined tag filtering (e.g., songs with both "Rock" and "Lofi") will require a more robust query builder and UI refinements.
+- **Playlist Integration**: Beyond just adding to the playback queue, future updates will support creating and updating Spotify playlists directly from selected tracks.
 
 ## Getting Started
 
