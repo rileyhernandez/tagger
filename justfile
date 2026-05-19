@@ -40,3 +40,7 @@ add +args:
 # Removes dependencies from project
 remove +args:
     @just run-in-lab "cargo remove {{args}}"
+
+# Clean unused dependencies
+machete:
+    @just run-in-lab "cargo machete"

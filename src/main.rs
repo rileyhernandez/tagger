@@ -10,17 +10,17 @@ use axum::extract::Query;
 use axum::{
     Router,
     extract::{Form, Path, State},
+    http::HeaderMap,
     response::{IntoResponse, Redirect},
     routing::{delete, get, post},
-    http::HeaderMap,
 };
-use log::{info, error};
+use log::{error, info};
 use rspotify::model::{PlayableId, TrackId};
 use rspotify::prelude::OAuthClient;
-use tokio::sync::RwLock;
 use std::collections::HashSet;
 use std::net::SocketAddr;
 use std::sync::Arc;
+use tokio::sync::RwLock;
 
 #[derive(serde::Deserialize)]
 pub struct CallbackQuery {
@@ -99,8 +99,10 @@ async fn list_tracks_handler(
     State(state): State<AppState>,
     Query(filter): Query<FilterQuery>,
 ) -> impl IntoResponse {
-    if let Some(r) = require_auth(&state).await { return r.into_response(); }
-    
+    if let Some(r) = require_auth(&state).await {
+        return r.into_response();
+    }
+
     let page = filter.page.unwrap_or(0);
     let page_size = 50;
 
@@ -130,8 +132,9 @@ async fn list_tracks_handler(
         current_page: page,
         has_next,
         last_sync,
-        selected_ids: state.selected_tracks.read().await.clone()
-    }.into_response()
+        selected_ids: state.selected_tracks.read().await.clone(),
+    }
+    .into_response()
 }
 
 async fn create_tag_handler(
@@ -192,14 +195,20 @@ async fn toggle_select_handler(
     if !selected.remove(&track_id) {
         selected.insert(track_id);
     }
-    format!("<span id='selection-count'>{} selected</span>", selected.len())
+    format!(
+        "<span id='selection-count'>{} selected</span>",
+        selected.len()
+    )
 }
 
 async fn add_selected_to_queue(State(state): State<AppState>) -> impl IntoResponse {
     let mut selected = state.selected_tracks.write().await;
-    
+
     for track_id_str in selected.iter() {
-        let clean_id = track_id_str.trim().strip_prefix("spotify:track:").unwrap_or(track_id_str);
+        let clean_id = track_id_str
+            .trim()
+            .strip_prefix("spotify:track:")
+            .unwrap_or(track_id_str);
         match TrackId::from_id(clean_id) {
             Ok(tid) => {
                 let play_id = PlayableId::Track(tid);
@@ -210,7 +219,7 @@ async fn add_selected_to_queue(State(state): State<AppState>) -> impl IntoRespon
             Err(_) => eprintln!("Skipping invalid track ID: {}", track_id_str),
         }
     }
-    
+
     selected.clear();
     Redirect::to("/")
 }
@@ -251,11 +260,17 @@ async fn main() -> anyhow::Result<()> {
 
     let redirect_uri_str = dotenvy::var("RSPOTIFY_REDIRECT_URI")
         .map_err(|_| anyhow!("RSPOTIFY_REDIRECT_URI must be configured in your env environment"))?;
-    
+
     let parsed_url = url::Url::parse(&redirect_uri_str)
         .map_err(|e| anyhow!("Failed to parse RSPOTIFY_REDIRECT_URI: {}", e))?;
 
-    let port = parsed_url.port().unwrap_or(if parsed_url.scheme() == "https" { 443 } else { 80 });
+    let port = parsed_url
+        .port()
+        .unwrap_or(if parsed_url.scheme() == "https" {
+            443
+        } else {
+            80
+        });
 
     let host_str = parsed_url.host_str().unwrap_or("localhost");
     let (ip_binding, is_proxy) = match host_str {
@@ -265,7 +280,7 @@ async fn main() -> anyhow::Result<()> {
         }
         _ => {
             info!("Production server environment detected via URI.");
-            ([127, 0, 0, 1], true) 
+            ([127, 0, 0, 1], true)
         }
     };
 
@@ -276,7 +291,7 @@ async fn main() -> anyhow::Result<()> {
     info!("Creating Spotify client...");
     let spotify = spotify::create_client_unauthenticated().await?;
     info!("Spotify client created!");
-    
+
     let state = AppState {
         pool,
         spotify: Arc::new(spotify),
@@ -305,7 +320,10 @@ async fn main() -> anyhow::Result<()> {
     let addr = SocketAddr::from((ip_binding, port));
 
     if is_proxy {
-        info!("Server listening internally at http://{} (Proxied securely via Caddy)", addr);
+        info!(
+            "Server listening internally at http://{} (Proxied securely via Caddy)",
+            addr
+        );
     } else {
         info!("Server listening locally at http://{}", addr);
     }
