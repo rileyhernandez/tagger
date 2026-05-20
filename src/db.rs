@@ -11,8 +11,10 @@ pub async fn get_all_track_ids(pool: &SqlitePool) -> Result<HashSet<String>> {
 }
 
 pub async fn setup_db() -> Result<SqlitePool> {
+    let database_url = dotenvy::var("DATABASE_URL")?;
+
     let pool = SqlitePoolOptions::new()
-        .connect("sqlite:music.db?mode=rwc")
+        .connect(&database_url)
         .await?;
 
     sqlx::query("PRAGMA foreign_keys = ON;")
