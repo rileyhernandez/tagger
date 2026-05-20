@@ -257,30 +257,27 @@ async fn previous_track_playback(State(state): State<AppState>) -> impl IntoResp
 async fn main() -> anyhow::Result<()> {
     env_logger::init();
     dotenvy::dotenv().ok();
-
+    
+    let port: u16 = dotenvy::var("PORT")
+        .unwrap_or_else(|_| "8888".to_string())
+        .parse()
+        .map_err(|_| anyhow!("PORT must be a valid number"))?;
+    
     let redirect_uri_str = dotenvy::var("RSPOTIFY_REDIRECT_URI")
         .map_err(|_| anyhow!("RSPOTIFY_REDIRECT_URI must be configured in your env environment"))?;
-
+    
     let parsed_url = url::Url::parse(&redirect_uri_str)
         .map_err(|e| anyhow!("Failed to parse RSPOTIFY_REDIRECT_URI: {}", e))?;
-
-    let port = parsed_url
-        .port()
-        .unwrap_or(if parsed_url.scheme() == "https" {
-            443
-        } else {
-            80
-        });
-
+    
     let host_str = parsed_url.host_str().unwrap_or("localhost");
     let (ip_binding, is_proxy) = match host_str {
         "localhost" | "127.0.0.1" => {
             info!("Local development environment detected via URI.");
-            ([127, 0, 0, 1], false)
+            ( [127, 0, 0, 1], false )
         }
         _ => {
             info!("Production server environment detected via URI.");
-            ([127, 0, 0, 1], true)
+            ( [127, 0, 0, 1], true )
         }
     };
 
