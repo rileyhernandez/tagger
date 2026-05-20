@@ -11,8 +11,8 @@ pub async fn get_all_track_ids(pool: &SqlitePool) -> Result<HashSet<String>> {
 }
 
 pub async fn setup_db() -> Result<SqlitePool> {
-    let database_url = dotenvy::var("DATABASE_URL")?;
-
+    let db_path = dotenvy::var("DATABASE_PATH")?;
+    let database_url = format!("sqlite:{}?mode=rwc", db_path);
     let pool = SqlitePoolOptions::new()
         .connect(&database_url)
         .await?;
